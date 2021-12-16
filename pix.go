@@ -41,12 +41,3 @@ func Place(colors []SampledColor, opts Options) error {
 	// fmt.Println("saving", outPath)
 	return canvas.SaveImage(outPath, opts.CompressionLevel)
 }
-
-func pow2MoreThan(x int) uint32 {
-	for i := 0; i < 31; i++ {
-		if x < 1<<i {
-			return 1 << i
-		}
-	}
-	return 1 << 31
-}

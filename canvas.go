@@ -248,3 +248,12 @@ func (c *Canvas) SaveImage(path string, compressionLevel png.CompressionLevel) e
 type Pos int32
 
 func rowMajorIndex(x, y, w int) int { return y*w + x }
+
+func pow2MoreThan(x int) uint32 {
+	for i := 0; i < 31; i++ {
+		if x < 1<<i {
+			return 1 << i
+		}
+	}
+	return 1 << 31
+}
