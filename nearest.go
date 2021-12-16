@@ -17,10 +17,10 @@ func (t *zipTree) Nearest(q Color, qCode MortonCode) MortonCode {
 	var rSq uint32 = 1 << 30
 	var best MortonCode
 	var qPosCode, qNegCode MortonCode
-	// todo: figure out why epsilon can be set to eg. 00000 with no ill effect
-	// ε := float64(0.25)
+	// todo: figure out why epsilon can be set to eg. 100000 with no ill effect
+	// ε := float64(100000)
 	// approxFactor := (1.0 + ε) * (1.0 + ε)
-	// float64(distSqToBBox(...)*approxFactor >= float64(rSq) {
+	// float64(distSqToBBox(qCode, t.MinKey(a), t.MaxKey(a), q))*approxFactor >= float64(rSq) {
 	var query func(q Color, ah Handle)
 	query = func(q Color, ah Handle) {
 		if ah == 0 {
@@ -32,7 +32,12 @@ func (t *zipTree) Nearest(q Color, qCode MortonCode) MortonCode {
 		dSq := sqDist(q, mid)
 		if dSq < rSq {
 			rSq = dSq
-			r := uint8(math.Ceil(math.Sqrt(float64(dSq))))
+			var r uint8
+			if dSq >= 255*255 {
+				r = 255
+			} else {
+				r = uint8(math.Ceil(math.Sqrt(float64(dSq))))
+			}
 			qPosCode = mortonCode(satAdd(q.x, r), satAdd(q.y, r), satAdd(q.z, r))
 			qNegCode = mortonCode(satSub(q.x, r), satSub(q.y, r), satSub(q.z, r))
 			best = midCode
@@ -100,7 +105,7 @@ func distSqToBBox(q, a, b MortonCode, c Color) uint32 { // takes morton codes as
 func satAdd(a, b uint8) uint8 {
 	r := a + b
 	if r < a {
-		return uint8(0) ^ 1
+		return 255
 	}
 	return r
 }
