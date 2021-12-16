@@ -173,7 +173,7 @@ func main() {
 							Output:           path.Join(dir, name+variationTag+ext),
 						}
 
-						status := fmt.Sprintf("generating variation %v: seeds:%v, colorsort: %v, random: %v, reverse: %v\n", variation, seedsString, sortOpts.Image, sortOpts.Random, sortOpts.Reverse)
+						status := fmt.Sprintf("generating variation %v: seeds:%v, colorsort: %v, random: %v, reverse: %v\n", variation, seedsString, sortOpts.Color, sortOpts.Random, sortOpts.Reverse)
 						jobs <- Work{sortedColors, opts, status}
 					}
 				}
