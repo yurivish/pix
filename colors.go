@@ -36,7 +36,7 @@ func clamp(x, lo, hi float64) float64 {
 }
 
 // Minimum and maximum values for OkLab's a and b parameters
-// found by enumerating all RGB colors and taking the extrema.
+// found by enumerating all 8-bit RGB colors and taking the extrema.
 // The L parameter extent is [0, 1], and doesn't need to be remapped.
 const aLo, aHi = -0.23388757418790818, 0.2762167534925238
 const bLo, bHi = -0.3115281476783751, 0.19856975465179516
@@ -48,15 +48,15 @@ func rgbToOkLab(rgb Color) Color {
 		toLinearRGB(rgb.z))
 	return Color{
 		quantize(L),
-		quantize(remap(a, aLo, aHi)),
-		quantize(remap(b, bLo, bHi))}
+		quantize(a - aLo),
+		quantize(b - bLo)}
 }
 
 func okLabCodeToRgb(code MortonCode) (uint8, uint8, uint8) {
 	r, g, b := oklab_to_linear_srgb(
 		invQuantize(mortonX(code)),
-		invRemap(invQuantize(mortonY(code)), aLo, aHi),
-		invRemap(invQuantize(mortonZ(code)), bLo, bHi))
+		invQuantize(mortonY(code))+aLo,
+		invQuantize(mortonZ(code))+bLo)
 	// floating-point imprecision can cause values to exceed 1
 	r, g, b = clamp(r, 0, 1), clamp(g, 0, 1), clamp(b, 0, 1)
 	return toNonlinearRGBLUT(r), toNonlinearRGBLUT(g), toNonlinearRGBLUT(b)
