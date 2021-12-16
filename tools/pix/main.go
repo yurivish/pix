@@ -201,7 +201,7 @@ func worker(id int, jobs <-chan Work, results chan<- bool) {
 		fmt.Print(j.status)
 		err := pix.Place(colors, opts)
 		if err != nil {
-			fmt.Printf("error placing pixels: %v", err)
+			fmt.Printf("!!! error placing pixels: %v\n", err)
 			results <- false
 		} else {
 			results <- true
