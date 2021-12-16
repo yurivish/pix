@@ -48,6 +48,10 @@ func rgbToOkLab(rgb Color) Color {
 		toLinearRGB(rgb.z))
 	return Color{
 		quantize(L),
+		// Rescaling these by translation leaves a lot of dynamic range on the table.
+		// Could compute a tighter bounding cube by finding the largest scale factor
+		// by which to linearly rescale all dimensions s. t. the smallest and largest
+		// values across any channel are 0 and 1.
 		quantize(a - aLo),
 		quantize(b - bLo)}
 }
