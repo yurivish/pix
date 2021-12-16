@@ -1,0 +1,9 @@
+.DS_Store
+*.sublime-workspace
+./pix
+tools/pix/pix
+images/out
+in
+prof
+out
+nice

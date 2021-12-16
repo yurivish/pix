@@ -1,0 +1,23 @@
+{
+	"folders":
+	[
+		{
+			"path": ".",
+		},
+	],
+	"settings":
+	{
+		"golang": {
+			"GOARCH": "amd64",
+			"GOOS": "darwin",
+
+			// "GOARCH": "wasm",
+			// "GOOS": "js",
+			// https://golang.org/cmd/link/
+			// -s: 	Omit the symbol table and debug information.
+			// -w: 	Omit the DWARF symbol table.
+			// "build:flags": ["-ldflags", "-s -w", "-o", "pix.wasm"],
+			// "build:flags": ["-o", "pix.wasm"],
+		},
+	},
+}
