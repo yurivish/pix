@@ -5,12 +5,14 @@ import (
 	"math/bits"
 )
 
-// Nearest-neighbor search using the approach from A Minimalist's
-// Implementation of an Approximate Nearest Search in Fixed Dimensions:
+// Nearest-neighbor search in a 3D color space using an approach described in
+// A Minimalist's Implementation of an Approximate Nearest Search in Fixed Dimensions:
 // http://cs.uwaterloo.ca/~tmchan/sss.ps
-// This is a variant of binary search through a Morton-ordered list of points,
-// alternately pruning the search space in Euclidean space and along the curve.
-// Our zip tree stores the points, and here we perform a recursive search.
+//
+// The algorithm is a variant of binary search through a Morton-ordered list of points
+// which alternately prunes the search space in Euclidean space and along the curve.
+// In our case we stores the points in a zip tree for dynamic updates, an perform the
+// search by recursively traversing the tree.
 func (t *zipTree) Nearest(q Color, qCode MortonCode) MortonCode {
 	var rSq uint32 = 1 << 30
 	var best MortonCode
