@@ -2,6 +2,31 @@ package pix
 
 import "testing"
 
+func TestDistSqToBBox(t *testing.T) {
+	colorToMortonCode := func(color Color) MortonCode {
+		return mortonCode(color.x, color.y, color.z)
+	}
+
+	// todo: more tests for the other components, multiple components, binary bbox.
+	tests := []struct {
+		q, a, b Color
+		result  uint32
+	}{
+		{}, // zero  colors are zero distance apart
+		{Color{0, 0, 0}, Color{0, 0, 0}, Color{0, 0, 2}, 0},
+		{Color{0, 0, 0}, Color{0, 0, 3}, Color{0, 0, 3}, 9},
+		{Color{0, 0, 0}, Color{0, 0, 0}, Color{0, 0, 3}, 0},
+		{Color{0, 0, 4}, Color{0, 0, 0}, Color{0, 0, 3}, 1},
+	}
+	for _, test := range tests {
+		q, a, b := colorToMortonCode(test.q), colorToMortonCode(test.a), colorToMortonCode(test.b)
+		got := distSqToBBox(q, a, b, test.q)
+		if got != test.result {
+			t.Errorf("%v: got %v; want %v", test, got, test.result)
+		}
+	}
+}
+
 func TestSatAdd(t *testing.T) {
 	tests := []struct {
 		a, b, c uint8
@@ -37,7 +62,7 @@ func TestSqDist(t *testing.T) {
 		{Color{2, 0, 0}, Color{0, 0, 0}, 4},
 		{Color{0, 2, 0}, Color{0, 0, 0}, 4},
 		{Color{0, 0, 2}, Color{0, 0, 0}, 4},
-		{Color{255, 255, 255}, Color{0, 0, 0}, 255 * 255 * 3},
+		{Color{255, 255, 255}, Color{1, 1, 1}, 254 * 254 * 3},
 	}
 	for _, test := range tests {
 		got := sqDist(test.a, test.b)

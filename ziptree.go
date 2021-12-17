@@ -4,6 +4,7 @@ package pix
 // https://arxiv.org/abs/1806.06726
 
 import (
+	"math"
 	"math/rand"
 )
 
@@ -187,4 +188,70 @@ func (t *zipTree) Get(rankAndKey uint32) Handle {
 	handle := Handle(len(t.nodes))
 	t.nodes = append(t.nodes, zipNode{rankAndKey, nilHandle, nilHandle})
 	return handle
+}
+
+// Nearest-neighbor search in a 3D color space using an approach described in
+// A Minimalist's Implementation of an Approximate Nearest Search in Fixed Dimensions:
+// http://cs.uwaterloo.ca/~tmchan/sss.ps
+//
+// The algorithm is a variant of binary search through a Morton-ordered list of points
+// which alternately prunes the search space in Euclidean space and along the curve.
+// In our case we stores the points in a zip tree for dynamic updates, an perform the
+// search by recursively traversing the tree.
+func (t *zipTree) Nearest(q Color, qCode MortonCode) MortonCode {
+	var rSq uint32 = 1 << 30
+	var best MortonCode
+	var qPosCode, qNegCode MortonCode
+	// todo: figure out why epsilon can be set to eg. 100000 with no ill effect
+	// ε := float64(100000)
+	// approxFactor := (1.0 + ε) * (1.0 + ε)
+	// float64(distSqToBBox(qCode, t.MinKey(a), t.MaxKey(a), q))*approxFactor >= float64(rSq) {
+	var query func(q Color, ah Handle)
+	query = func(q Color, ah Handle) {
+		if ah == 0 {
+			return
+		}
+		a := t.Node(ah)
+		midCode := a.Key()
+		mid := mortonCodeToColor(midCode)
+		dSq := sqDist(q, mid)
+		if dSq < rSq {
+			rSq = dSq
+			var r uint8
+			if dSq >= 255*255 {
+				r = 255
+			} else {
+				r = uint8(math.Ceil(math.Sqrt(float64(dSq))))
+			}
+			qPosCode = mortonCode(satAdd(q.x, r), satAdd(q.y, r), satAdd(q.z, r))
+			qNegCode = mortonCode(satSub(q.x, r), satSub(q.y, r), satSub(q.z, r))
+			best = midCode
+		}
+		// a.left is only equal to a.right if both are nilHandle
+		// We exclude searching intervals if the distance from the query point to the snug power-of-2 bounding box
+		// enclosing the interval is farther away than our best distance so far.
+		if a.left == a.right || midCode == qCode || distSqToBBox(qCode, t.MinKey(a), t.MaxKey(a), q) >= rSq {
+			return
+		}
+		// If we can't exclude the interval, go ahead with a recursive search.
+		// Recurse into one or both halves of the array. We can avoid recursing
+		// into the second half when the box enclosing our "best radius" circle.
+		// The points qPos and qNeg are the smallest and largest morton codes of
+		// points within that box – thanks to properties of the z-order curve,
+		// any points below qNeg or above qPos are definitely more distant from q
+		// than the best radius r.
+		if qCode <= midCode {
+			query(q, a.left)
+			if qPosCode >= midCode {
+				query(q, a.right)
+			}
+		} else {
+			query(q, a.right)
+			if qNegCode <= midCode {
+				query(q, a.left)
+			}
+		}
+	}
+	query(q, t.root)
+	return best
 }
