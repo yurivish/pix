@@ -71,7 +71,7 @@ func main() {
 		_, file := path.Split(*input)
 		wd, err := os.Getwd()
 		if err != nil {
-			log.Fatalf("could not get working directory: %w", err)
+			log.Fatalf("could not get working directory: %v", err)
 		}
 		ext := path.Ext(file)
 		if ext != ".png" {
@@ -86,7 +86,7 @@ func main() {
 
 	img, err := pix.LoadImage(*input)
 	if err != nil {
-		log.Fatalf("failed to load image: %w", err)
+		log.Fatalf("failed to load image: %v", err)
 	}
 
 	w, h := *width, *height
