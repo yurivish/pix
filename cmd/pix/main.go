@@ -19,7 +19,7 @@ func main() {
 	output := flag.String("out", "", "output image")
 	width := flag.Int("width", 300, "width of the output image")
 	height := flag.Int("height", 300, "height of the output image")
-	color := flag.Int("colorsort", 10, "magic parameter (0 to 100) determining sort order. A higher value will give more weight to color similarity, while lower values will better preserve proximity in the source image.")
+	color := flag.Int("colorsort", 90, "magic parameter (0 to 100) determining sort order. A higher value will give more weight to color similarity, while lower values will better preserve proximity in the source image.")
 	random := flag.Int("random", 0, "randomness weight for similarity sort")
 	reverse := flag.Bool("reverse", true, "reverse sort order")
 	sweep := flag.Bool("sweep", false, "sweep across {colorsort, random, reverse, seeds} parameters, ignoring any explicitly set values")
