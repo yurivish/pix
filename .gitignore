@@ -1,7 +1,7 @@
 .DS_Store
 *.sublime-workspace
 ./pix
-tools/pix/pix
+cmd/pix/pix
 images/out
 in
 prof
