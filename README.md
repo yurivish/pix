@@ -1,8 +1,8 @@
+![Road in the Winter Forest by Olga Malamud Pavlovich](img/winter.png)
+
 # Pix
 
 Turn photos into abstract art.
-
-![Road in the Winter Forest by Olga Malamud Pavlovich](img/winter.png)
 
 The command-line tool can be installed with `go get`:
 
