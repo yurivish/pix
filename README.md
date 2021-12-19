@@ -16,7 +16,7 @@ Run it like so:
 pix -in picture.jpg
 ```
 
-Or generate multiple outputs by sweeping the parameter space:
+Generate multiple outputs by sweeping the parameter space:
 
 ```
 pix -in picture.jpg -sweep
