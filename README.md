@@ -24,4 +24,4 @@ pix -in picture.jpg -sweep
 
 Pix is capable of generating 8,000×8,000 outputs in around a minute. 
 
-Since the placement process involves _n_ nearest-neighbor searches, where _n_ is the number of pixels in the output image, the time taken depends significantly on the color distribution and placement order. These affect the shape of the frontier and the size of the search tree.
+The placement process performs one nearest-neighbor search per output pixel, so the time taken depends significantly on the placement order and color distribution since those affect the size of the dynamic search tree and the shape of the frontier.
