@@ -22,3 +22,4 @@ Generate multiple outputs by sweeping the parameter space:
 pix -in picture.jpg -sweep
 ```
 
+Pix is capable of generating 8,000×8,000 outputs in around a minute. Precise timings depend significantly on the colors and their placement order, though.
