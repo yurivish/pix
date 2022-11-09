@@ -19,6 +19,7 @@ func main() {
 	output := flag.String("out", "", "output image")
 	width := flag.Int("width", 300, "width of the output image")
 	height := flag.Int("height", 300, "height of the output image")
+	whitePercent := flag.Int("white-percent", 0, "percentage (0 to 100) determining the area left white on the canvas")
 	color := flag.Int("colorsort", 90, "magic parameter (0 to 100) determining sort order. A higher value will give more weight to color similarity, while lower values will better preserve proximity in the source image.")
 	random := flag.Int("random", 0, "randomness weight for similarity sort")
 	reverse := flag.Bool("reverse", true, "reverse sort order")
@@ -125,7 +126,7 @@ func main() {
 	}
 
 	// Sample colors from the image
-	colors := pix.SampleColors(img, w*h)
+	colors := pix.SampleColors(img, (100-*whitePercent)*w*h/100)
 
 	// Generate variations
 	variation := 0
