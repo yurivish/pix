@@ -24,12 +24,23 @@ type zipTree struct {
 	nodes []zipNode // pool of pre-allocated nodes
 	free  []Handle  // free list
 	rng   *rand.Rand
+
+	// Per-query scratch for the nearest-neighbor search. Kept on the tree (not
+	// captured by a closure) so the recursive search is a plain method with no
+	// per-query heap allocation or closure-call overhead. Safe because each
+	// tree is owned by a single goroutine — its Canvas — and parallel runs use
+	// independent canvases/trees.
+	q                  Color
+	qCode              MortonCode
+	rSq                uint32
+	best               MortonCode
+	qPosCode, qNegCode MortonCode
 }
 
 func newZipTree(rng *rand.Rand) *zipTree {
 	nodes := make([]zipNode, 1, 250_000)
 	free := make([]Handle, 0, 100_000)
-	return &zipTree{nilHandle, nodes, free, rng}
+	return &zipTree{root: nilHandle, nodes: nodes, free: free, rng: rng}
 }
 
 func (t *zipTree) Insert(key MortonCode) {
