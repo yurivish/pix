@@ -15,6 +15,7 @@ const nilHandle = Handle(0)
 type zipNode struct {
 	rankAndKey  uint32 // 8-bit rank, then 24-bit morton code
 	left, right Handle // handles to the left and right children in the pool
+	color       Color  // the key's decoded (x,y,z), cached so the search loop need not re-decode it on every visit
 }
 
 type zipTree struct {
@@ -178,15 +179,19 @@ func (t *zipTree) Put(handle Handle) {
 
 // Get an unused handle from the pool
 func (t *zipTree) Get(rankAndKey uint32) Handle {
+	// Decode the key's color once here, at insert time, instead of on every
+	// search visit. The key is the low 24 bits of rankAndKey.
+	color := mortonCodeToColor(MortonCode(rankAndKey & 0x00FFFFFF))
+	node := zipNode{rankAndKey: rankAndKey, left: nilHandle, right: nilHandle, color: color}
 	n := len(t.free)
 	if n > 0 {
 		handle := t.free[n-1]
 		t.free = t.free[:n-1]
-		t.nodes[handle] = zipNode{rankAndKey, nilHandle, nilHandle}
+		t.nodes[handle] = node
 		return handle
 	}
 	handle := Handle(len(t.nodes))
-	t.nodes = append(t.nodes, zipNode{rankAndKey, nilHandle, nilHandle})
+	t.nodes = append(t.nodes, node)
 	return handle
 }
 
@@ -213,7 +218,7 @@ func (t *zipTree) Nearest(q Color, qCode MortonCode) MortonCode {
 		}
 		a := t.Node(ah)
 		midCode := a.Key()
-		mid := mortonCodeToColor(midCode)
+		mid := a.color // decoded once at insert time (zipNode.color), not per visit
 		dSq := sqDist(q, mid)
 		if dSq < rSq {
 			rSq = dSq
