@@ -13,9 +13,10 @@ type Handle uint32
 const nilHandle = Handle(0)
 
 type zipNode struct {
-	rankAndKey  uint32 // 8-bit rank, then 24-bit morton code
-	left, right Handle // handles to the left and right children in the pool
-	color       Color  // the key's decoded (x,y,z), cached so the search loop need not re-decode it on every visit
+	rankAndKey     uint32     // 8-bit rank, then 24-bit morton code
+	left, right    Handle     // handles to the left and right children in the pool
+	color          Color      // the key's decoded (x,y,z), cached so the search loop need not re-decode it on every visit
+	subMin, subMax MortonCode // smallest/largest key in this node's subtree, for O(1) bbox pruning
 }
 
 type zipTree struct {
@@ -23,12 +24,23 @@ type zipTree struct {
 	nodes []zipNode // pool of pre-allocated nodes
 	free  []Handle  // free list
 	rng   *rand.Rand
+
+	// Per-query scratch for the nearest-neighbor search. Kept on the tree (not
+	// captured by a closure) so the recursive search is a plain method with no
+	// per-query heap allocation or closure-call overhead. Safe because each
+	// tree is owned by a single goroutine — its Canvas — and parallel runs use
+	// independent canvases/trees.
+	q                  Color
+	qCode              MortonCode
+	rSq                uint32
+	best               MortonCode
+	qPosCode, qNegCode MortonCode
 }
 
 func newZipTree(rng *rand.Rand) *zipTree {
 	nodes := make([]zipNode, 1, 250_000)
 	free := make([]Handle, 0, 100_000)
-	return &zipTree{nilHandle, nodes, free, rng}
+	return &zipTree{root: nilHandle, nodes: nodes, free: free, rng: rng}
 }
 
 func (t *zipTree) Insert(key MortonCode) {
@@ -93,6 +105,10 @@ func (t *zipTree) InsertRec(hroot, hx Handle) Handle {
 			} else {
 				root.left = x.right
 				x.right = hroot
+				// hroot and hx changed children; fix their aggregates
+				// bottom-up (hroot, whose subtree is now final, then hx).
+				t.refresh(hroot)
+				t.refresh(hx)
 				return hx
 			}
 		}
@@ -103,10 +119,14 @@ func (t *zipTree) InsertRec(hroot, hx Handle) Handle {
 			} else {
 				root.right = x.left
 				x.left = hroot
+				t.refresh(hroot)
+				t.refresh(hx)
 				return hx
 			}
 		}
 	}
+	// A descendant of hroot may have changed; recompute its aggregate.
+	t.refresh(hroot)
 	return hroot
 }
 
@@ -134,6 +154,8 @@ func (t *zipTree) DeleteRec(hroot Handle, key MortonCode) Handle {
 			t.DeleteRec(root.right, key)
 		}
 	}
+	// A node was removed somewhere below hroot; recompute its aggregate.
+	t.refresh(hroot)
 	return hroot
 }
 
@@ -147,9 +169,11 @@ func (t *zipTree) zip(hx, hy Handle) Handle {
 	x, y := t.Node(hx), t.Node(hy)
 	if x.Rank() < y.Rank() {
 		t.SetLeft(hy, t.zip(hx, y.left))
+		t.refresh(hy)
 		return hy
 	} else {
 		t.SetRight(hx, t.zip(x.right, hy))
+		t.refresh(hx)
 		return hx
 	}
 }
@@ -181,8 +205,10 @@ func (t *zipTree) Put(handle Handle) {
 func (t *zipTree) Get(rankAndKey uint32) Handle {
 	// Decode the key's color once here, at insert time, instead of on every
 	// search visit. The key is the low 24 bits of rankAndKey.
-	color := mortonCodeToColor(MortonCode(rankAndKey & 0x00FFFFFF))
-	node := zipNode{rankAndKey: rankAndKey, left: nilHandle, right: nilHandle, color: color}
+	key := MortonCode(rankAndKey & 0x00FFFFFF)
+	color := mortonCodeToColor(key)
+	// A fresh node is a leaf, so its subtree min and max are both its own key.
+	node := zipNode{rankAndKey: rankAndKey, left: nilHandle, right: nilHandle, color: color, subMin: key, subMax: key}
 	n := len(t.free)
 	if n > 0 {
 		handle := t.free[n-1]
@@ -193,6 +219,24 @@ func (t *zipTree) Get(rankAndKey uint32) Handle {
 	handle := Handle(len(t.nodes))
 	t.nodes = append(t.nodes, node)
 	return handle
+}
+
+// refresh recomputes a node's cached subtree min/max keys from its children's
+// already-correct aggregates. By the BST ordering the subtree minimum is the
+// left child's subMin (or the node's own key when it has no left child), and
+// symmetrically for the maximum. Callers must refresh bottom-up: a node only
+// after both its children are up to date.
+func (t *zipTree) refresh(h Handle) {
+	n := &t.nodes[h]
+	key := MortonCode(n.rankAndKey & 0x00FFFFFF)
+	n.subMin = key
+	if n.left != nilHandle {
+		n.subMin = t.nodes[n.left].subMin
+	}
+	n.subMax = key
+	if n.right != nilHandle {
+		n.subMax = t.nodes[n.right].subMax
+	}
 }
 
 // Nearest-neighbor search in a 3D color space using an approach described in
@@ -235,7 +279,11 @@ func (t *zipTree) Nearest(q Color, qCode MortonCode) MortonCode {
 		// a.left is only equal to a.right if both are nilHandle
 		// We exclude searching intervals if the distance from the query point to the snug power-of-2 bounding box
 		// enclosing the interval is farther away than our best distance so far.
-		if a.left == a.right || midCode == qCode || distSqToBBox(qCode, t.MinKey(a), t.MaxKey(a), q) >= rSq {
+		// a.subMin/a.subMax are the cached subtree key range, replacing the
+		// former t.MinKey(a)/t.MaxKey(a) leaf-walks (each O(height)) with O(1)
+		// field reads. (MinKey/MaxKey are retained as the brute-force reference
+		// for TestAggregateConsistency.)
+		if a.left == a.right || midCode == qCode || distSqToBBox(qCode, a.subMin, a.subMax, q) >= rSq {
 			return
 		}
 		// If we can't exclude the interval, go ahead with a recursive search.
